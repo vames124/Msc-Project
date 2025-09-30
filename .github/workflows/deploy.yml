@@ -7,9 +7,9 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  EB_APPLICATION_NAME: ecommerce-demo
-  EB_ENVIRONMENT_NAME: ecommerce-demo-env
-  S3_BUCKET_NAME: ecommerce-demo-deploy
+  EB_APPLICATION_NAME: ecommerce-demo-ademolaivamos
+  EB_ENVIRONMENT_NAME: ecommerce-demo-ademolaivamos
+  S3_BUCKET_NAME: ecommerce-demo-ademolaivamos
 
 jobs:
   test-and-deploy:
