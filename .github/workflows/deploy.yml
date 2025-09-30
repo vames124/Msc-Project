@@ -80,7 +80,8 @@ jobs:
           --environment-name ${{ env.EB_ENVIRONMENT_NAME }} \
           --version-label ${{ github.sha }} \
           --solution-stack-name "64bit Amazon Linux 2023 v6.6.5 running Node.js 20"
-
+          --option-settings Namespace=aws:autoscaling:launchconfiguration,OptionName=IamInstanceProfile,Value=EB-EC2 \
+          --option-settings Namespace=aws:autoscaling:launchconfiguration,OptionName=InstanceType,Value=t3.micro \
     - name: Get application URL
       run: |
         URL=$(aws elasticbeanstalk describe-environments \
