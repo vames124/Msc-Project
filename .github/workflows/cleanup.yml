@@ -1,0 +1,108 @@
+name: Cleanup AWS Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_cleanup:
+        description: 'Type "DELETE" to confirm cleanup'
+        required: true
+        type: string
+      region:
+        description: 'AWS Region'
+        required: true
+        default: 'us-east-1'
+        type: choice
+        options:
+        - us-east-1
+        - us-west-2
+        - eu-west-1
+        - ap-southeast-1
+
+env:
+  AWS_REGION: ${{ github.event.inputs.region || 'us-east-1' }}
+  EB_APPLICATION_NAME: ecommerce-demo
+  EB_ENVIRONMENT_NAME: ecommerce-demo-env
+  S3_BUCKET_NAME: ecommerce-demo-frontend
+
+jobs:
+  cleanup:
+    name: Cleanup AWS Resources
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_cleanup == 'DELETE'
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Terminate Elastic Beanstalk environment
+      run: |
+        echo "☁️ Terminating Elastic Beanstalk environment..."
+        aws elasticbeanstalk terminate-environment \
+          --environment-name ${{ env.EB_ENVIRONMENT_NAME }} || echo "Environment not found or already terminated"
+          
+    - name: Delete Elastic Beanstalk application
+      run: |
+        echo "☁️ Deleting Elastic Beanstalk application..."
+        aws elasticbeanstalk delete-application \
+          --application-name ${{ env.EB_APPLICATION_NAME }} || echo "Application not found or already deleted"
+          
+    - name: Delete S3 bucket contents and bucket
+      run: |
+        echo "🪣 Deleting S3 bucket..."
+        aws s3 rm s3://${{ env.S3_BUCKET_NAME }} --recursive || echo "Bucket contents not found"
+        aws s3 rb s3://${{ env.S3_BUCKET_NAME }} || echo "Bucket not found or already deleted"
+        
+    - name: Delete security group
+      run: |
+        echo "🛡️ Deleting security group..."
+        SG_ID=$(aws ec2 describe-security-groups \
+          --filters "Name=group-name,Values=ecommerce-demo-sg" \
+          --query 'SecurityGroups[0].GroupId' \
+          --output text 2>/dev/null || echo "none")
+          
+        if [ "$SG_ID" != "none" ] && [ "$SG_ID" != "None" ]; then
+          aws ec2 delete-security-group --group-id $SG_ID || echo "Security group not found or already deleted"
+        else
+          echo "Security group not found"
+        fi
+        
+    - name: Cleanup IAM resources
+      run: |
+        echo "🔐 Cleaning up IAM resources..."
+        
+        # Remove role from instance profile
+        aws iam remove-role-from-instance-profile \
+          --instance-profile-name aws-elasticbeanstalk-ec2-role \
+          --role-name aws-elasticbeanstalk-ec2-role || echo "Role not in instance profile"
+          
+        # Delete instance profile
+        aws iam delete-instance-profile \
+          --instance-profile-name aws-elasticbeanstalk-ec2-role || echo "Instance profile not found"
+          
+        # Detach policy from role
+        aws iam detach-role-policy \
+          --role-name aws-elasticbeanstalk-ec2-role \
+          --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier || echo "Policy not attached"
+          
+        # Delete role
+        aws iam delete-role \
+          --role-name aws-elasticbeanstalk-ec2-role || echo "Role not found"
+          
+    - name: Cleanup summary
+      run: |
+        echo ""
+        echo "🧹 AWS Resources Cleanup Complete!"
+        echo "=================================="
+        echo "Region: ${{ env.AWS_REGION }}"
+        echo "Elastic Beanstalk Application: ${{ env.EB_APPLICATION_NAME }} (deleted)"
+        echo "Elastic Beanstalk Environment: ${{ env.EB_ENVIRONMENT_NAME }} (terminated)"
+        echo "S3 Bucket: ${{ env.S3_BUCKET_NAME }} (deleted)"
+        echo "Security Group: ecommerce-demo-sg (deleted)"
+        echo "IAM Role: aws-elasticbeanstalk-ec2-role (deleted)"
+        echo ""
+        echo "⚠️ Note: Some resources may take a few minutes to fully delete"
+        echo "Check AWS Console to verify all resources are removed"

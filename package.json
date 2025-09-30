@@ -1,0 +1,31 @@
+{
+  "name": "ecommerce-demo",
+  "version": "1.0.0",
+  "description": "E-commerce demo with vanilla JS frontend and Express backend",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "build": "npm run build:frontend",
+    "build:frontend": "mkdir -p dist && cp -r client/* dist/"
+  },
+  "keywords": ["ecommerce", "express", "vanilla-js", "aws"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
